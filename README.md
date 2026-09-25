@@ -6,8 +6,6 @@ used by Bun and WebKit (Safari, all iOS versions of browsers).
 
 ## Usage
 
-(These are the intended usage patterns, to implement)
-
 ### Recover seed
 
 ```sh
