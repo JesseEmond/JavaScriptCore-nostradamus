@@ -4,49 +4,6 @@ Utilities to brute-force the underlying seed by the weak random generator of
 `JavaScriptCore`'s `Math.random()`. This is notably the random number generation
 used by Bun and WebKit (Safari, all iOS versions of browsers).
 
-## Usage
-
-### Recover seed
-
-```sh
-$ time cargo run --release 0.09206707202592623
-Seed: 1172590173
-cargo run --release 0.09206707202592623  1.55s user 0.01s system 110% cpu 1.407 total
-```
-
-And indeed:
-```sh
-$ bun -e 'import { setRandomSeed  } from "bun:jsc"; setRandomSeed(1172590173); console.log(Math.random());'
-0.09206707202592623
-```
-
-### Predict next output
-
-```sh
-$ time cargo run --release -- --next-pred 0.04654924635051105
-0.9982287547550598
-cargo run --release -- --next-pred 0.04654924635051105  4.28s user 0.02s system 110% cpu 3.885 total
-```
-
-And indeed, I recovered a sequence I generated earlier:
-```sh
-$ bun -e 'console.log(Math.random()); console.log(Math.random());'
-0.04654924635051105
-0.9982287547550598
-```
-
-### As a library
-
-```rust
-for seed in 0..=(u32::MAX as u64) {
-    let seed = seed as u32;
-    let mut rng = WeakRandom::from_seed(seed);
-    // Do generations from 'rng' to match the sequences of rng generations from
-    // your target to clone, verify outputs match (e.g. if you're not observing
-    // the first random output).
-}
-```
-
 ## Background
 
 I got nerd-sniped into investigating the `Math.random()` default seeding
@@ -121,4 +78,47 @@ To brute-force a seed, all we need:
 - ...
 - Profit!
 
-See `Usage` above.
+
+## Usage
+
+### Recover seed
+
+```sh
+$ time cargo run --release 0.09206707202592623
+Seed: 1172590173
+cargo run --release 0.09206707202592623  1.55s user 0.01s system 110% cpu 1.407 total
+```
+
+And indeed:
+```sh
+$ bun -e 'import { setRandomSeed  } from "bun:jsc"; setRandomSeed(1172590173); console.log(Math.random());'
+0.09206707202592623
+```
+
+### Predict next output
+
+```sh
+$ time cargo run --release -- --next-pred 0.04654924635051105
+0.9982287547550598
+cargo run --release -- --next-pred 0.04654924635051105  4.28s user 0.02s system 110% cpu 3.885 total
+```
+
+And indeed, I recovered a sequence I generated earlier:
+```sh
+$ bun -e 'console.log(Math.random()); console.log(Math.random());'
+0.04654924635051105
+0.9982287547550598
+```
+
+### As a library
+
+```rust
+for seed in 0..=(u32::MAX as u64) {
+    let seed = seed as u32;
+    let mut rng = WeakRandom::from_seed(seed);
+    // Do generations from 'rng' to match the sequences of rng generations from
+    // your target to clone, verify outputs match (e.g. if you're not observing
+    // the first random output).
+}
+```
+
