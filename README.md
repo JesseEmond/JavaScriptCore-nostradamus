@@ -1,4 +1,4 @@
-# Recovering WebKit's `Math.random()` seed
+# Recovering Bun/WebKit's `Math.random()` seed
 
 Utilities to brute-force the underlying seed by the weak random generator of
 `JavaScriptCore`'s `Math.random()`. This is notably the random number generation
