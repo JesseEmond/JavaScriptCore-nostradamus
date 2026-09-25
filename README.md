@@ -15,26 +15,26 @@ My previous investigation like this was [in V8](https://github.com/JesseEmond/bl
 weak random generator, the seed still comes from good entropy and is [64-bits](https://github.com/nodejs/node/blob/0a18e136b4a1e860bb2befcbd1f78661ed5fb5e7/deps/v8/src/base/utils/random-number-generator.h#L46).
 
 While looking at Bun, I chased down its initial random seed through this path:
-- [`jsc.getRandomSeed`](https://bun.com/reference/bun/jsc/getRandomSeed), called
-  when it starts;
+- [`jsc.getRandomSeed`](https://bun.com/reference/bun/jsc/getRandomSeed),
+  mentions the seed being set when it starts;
 - Connected to its C++ implementation `functionGetRandomSeed` [here](https://github.com/oven-sh/bun/blob/abc26b727b3fe596e11d54113c94e5a1e839b51b/src/jsc/modules/BunJSCModule.h#L1020);
-- Implemented as a call to `globalObject->weakRandom().seed()` [here](https://github.com/oven-sh/bun/blob/abc26b727b3fe596e11d54113c94e5a1e839b51b/src/jsc/modules/BunJSCModule.h#L525) (note: appropriate name for `Math.random()`, I appreciate it!);
+- Implemented as a call to `globalObject->weakRandom().seed()` [here](https://github.com/oven-sh/bun/blob/abc26b727b3fe596e11d54113c94e5a1e839b51b/src/jsc/modules/BunJSCModule.h#L525) (note: appropriate name for `Math.random()`, I appreciate the explicit name to disencourage misuse!);
 - `globalObject` is a `JSGlobalObject`. Reading on Bun's architecture, we learn
   that it leverages Apple's JavaScriptCore (JSC) for its core runtime engine.
 - Bun uses [its fork of webkit](https://github.com/oven-sh/WebKit) for the
   runtime implementation (see [contributing instructions](https://bun.com/docs/project/contributing#building-webkit-locally-debug-mode-of-jsc));
 - `weakRandom` is a `WeakRandom` object (see [here](https://github.com/oven-sh/WebKit/blob/74650443cb1a41519624470b386c850c1927762b/Source/JavaScriptCore/runtime/JSGlobalObject.h#L1356));
-- [`WeakRandom`'s implementation](https://github.com/oven-sh/WebKit/blob/74650443cb1a41519624470b386c850c1927762b/Source/WTF/wtf/WeakRandom.h#L42) sits in `WTF/wtf/WeakRandom.h` (FYI: `WTF` here [stands for](https://stackoverflow.com/questions/834179/wtf-does-wtf-represent-in-the-webkit-code-base) `Web Template Framework`!);
+- [`WeakRandom`'s implementation](https://github.com/oven-sh/WebKit/blob/74650443cb1a41519624470b386c850c1927762b/Source/WTF/wtf/WeakRandom.h#L42) sits in `WTF/wtf/WeakRandom.h` (FYI: `WTF` here [stands for](https://stackoverflow.com/questions/834179/wtf-does-wtf-represent-in-the-webkit-code-base) `Web Template Framework` and not what you thought);
 - Its seed by default comes from a cryptographically random number, but can be
-  passed as an argument -- let's chase down `m_weakRandom`'s initialization on the
-  global object...;
+  passed as an argument -- so let's chase down `m_weakRandom`'s initialization
+  on the global object;
 - In the cpp implementation, the `m_weakRandom` [is initialized](https://github.com/oven-sh/WebKit/blob/74650443cb1a41519624470b386c850c1927762b/Source/JavaScriptCore/runtime/JSGlobalObject.cpp#L972)
-  either with a forced seed based on options (default false), or...
-- **The seed is set via a cryptographically-strong _32-bit_ number**!
+  either with a forced constant seed based on some options (default false), or...
+- The seed is set via a cryptographically-strong **_32-bits_ number**!
 
 ## Really, 32-bits...?
 Now, `Math.random()` is not meant to be secure in V8 either -- see
-[_Hacking the javascript lottery_](https://blog.securityevaluators.com/hacking-the-javascript-lottery-80cc437e3b7f), this is certainly not a _real_ issue.
+[_Hacking the javascript lottery_](https://medium.com/independent-security-evaluators/hacking-the-javascript-lottery-80cc437e3b7f#.pbi9112z5), this is certainly not a _real_ issue.
 But, I'm still surprised that it wouldn't go to 64-bits to make bruteforceability
 less accessible.
 
@@ -47,7 +47,7 @@ done
 # (... be patient ...)
 
 # Check how many total seeds we have (`wc -l`), vs. how many unique ones (`sort -u | wc -l`).
-# Extract the duplicates (sort | uniq -cd).
+# Extract the duplicates (`sort | uniq -cd`).
 cat /tmp/seeds.txt | wc -l; sort -u /tmp/seeds.txt | wc -l; sort /tmp/seeds.txt | uniq -cd
 ```
 
@@ -64,9 +64,9 @@ with **114 colliding seeds**.
 
 Now, with [birthday problem](https://en.wikipedia.org/wiki/Birthday_problem) maths,
 the expected number of collisions (`E[X]`) for 1M (`k`) samples of 32-bits
-(`n=2**32`) numbers would be `~= k(k-1) / 2n ~= 1M(1M-1)/(2**33) ~= 116.4`.
+(`n=2**32`) numbers would be `~= k(k-1) / 2n ~= 1M(1M-1)/(2**33) ~= 116.4`. And we got 114!
 
-**Looks like we have a 32-bit seed!**
+**Looks like we _do_ have a 32-bit seed!**
 
 ## Bruteforcing 32-bit seeds
 
@@ -78,6 +78,7 @@ To brute-force a seed, all we need:
 - ...
 - Profit!
 
+32-bits bruteforcing is very accessible on modern hardware.
 
 ## Usage
 
