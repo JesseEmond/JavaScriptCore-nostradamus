@@ -30,6 +30,13 @@ $ time cargo run --release -- --next-pred 0.04654924635051105
 cargo run --release -- --next-pred 0.04654924635051105  4.28s user 0.02s system 110% cpu 3.885 total
 ```
 
+And indeed, I recovered a sequence I generated earlier:
+```sh
+$ bun -e 'console.log(Math.random()); console.log(Math.random());'
+0.04654924635051105
+0.9982287547550598
+```
+
 ### As a library
 
 ```rust
