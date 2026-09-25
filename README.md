@@ -12,22 +12,34 @@ used by Bun and WebKit (Safari, all iOS versions of browsers).
 
 ```sh
 $ time cargo run --release 0.09206707202592623
-Seed: TODO
-TODO: include time
+Seed: 2592623
+cargo run --release 0.09206707202592623  1.55s user 0.01s system 110% cpu 1.407 total
+```
+
+And indeed:
+```sh
+$ bun -e 'import { setRandomSeed  } from "bun:jsc"; setRandomSeed(1172590173); console.log(Math.random());'
+0.09206707202592623
 ```
 
 ### Predict next output
 
 ```sh
-$ time cargo run --release --next-pred 0.04654924635051105
+$ time cargo run --release -- --next-pred 0.04654924635051105
 0.9982287547550598
-# TODO: Verify!
+cargo run --release -- --next-pred 0.04654924635051105  4.28s user 0.02s system 110% cpu 3.885 total
 ```
 
 ### As a library
 
 ```rust
-// TODO: Add the library usage here, showing e.g. the look for patterns.
+for seed in 0..=(u32::MAX as u64) {
+    let seed = seed as u32;
+    let mut rng = WeakRandom::from_seed(seed);
+    // Do generations from 'rng' to match the sequences of rng generations from
+    // your target to clone, verify outputs match (e.g. if you're not observing
+    // the first random output).
+}
 ```
 
 ## Background
