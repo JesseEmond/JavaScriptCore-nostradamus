@@ -26,6 +26,13 @@ impl WeakRandom {
         self.seed
     }
 
+    pub fn get(&mut self) -> f64 {
+        const MASK: u64 = (1 << 53) - 1;
+        const SCALE: f64 = 1.0 / (1u64 << 53) as f64;
+        let value = self.advance() & MASK;
+        (value as f64) * SCALE
+    }
+
     fn advance(&mut self) -> u64 {
         let x = self.low;
         let y = self.high;
@@ -43,5 +50,13 @@ mod tests {
     fn test_seed_saved() {
         let rng = WeakRandom::from_seed(1337);
         assert!(rng.seed() == 1337)
+    }
+
+    #[test]
+    fn test_seed_1337_generates_matches_bun() {
+        let mut rng = WeakRandom::from_seed(1337);
+        // Output generated via:
+        // bun -e 'import { setRandomSeed } from "bun:jsc"; setRandomSeed(1337); console.log(Math.random())'
+        assert!(rng.get() == 0.0000012451879418673428f64);
     }
 }
