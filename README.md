@@ -96,4 +96,12 @@ the expected number of collisions (`E[X]`) for 1M (`k`) samples of 32-bits
 
 ## Bruteforcing 32-bit seeds
 
-TODO: Implement & document here.
+To brute-force a seed, all we need:
+- Implement `WeakRandom` the same way to match the `Math.random()` output for a
+  given seed.
+- Try all seeds from `0` to `2**32-1` until our cloned `Math.random()`
+  implementation would generate the same.
+- ...
+- Profit!
+
+See `Usage` above.

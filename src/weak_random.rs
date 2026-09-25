@@ -53,10 +53,19 @@ mod tests {
     }
 
     #[test]
-    fn test_seed_1337_generates_matches_bun() {
+    fn test_seed_1337_get_matches_bun() {
         let mut rng = WeakRandom::from_seed(1337);
         // Output generated via:
         // bun -e 'import { setRandomSeed } from "bun:jsc"; setRandomSeed(1337); console.log(Math.random())'
         assert!(rng.get() == 0.0000012451879418673428f64);
+    }
+
+    #[test]
+    fn test_seed_1337_second_output_get_matches_bun() {
+        let mut rng = WeakRandom::from_seed(1337);
+        // Output generated via:
+        // bun -e 'import { setRandomSeed } from "bun:jsc"; setRandomSeed(1337); Math.random(); console.log(Math.random())'
+        rng.get(); // ignore
+        assert!(rng.get() == 0.44531374578659877);
     }
 }
