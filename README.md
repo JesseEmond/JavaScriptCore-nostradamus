@@ -1,0 +1,99 @@
+# Recovering WebKit's `Math.random()` seed
+
+Utilities to brute-force the underlying seed by the weak random generator of
+`JavaScriptCore`'s `Math.random()`. This is notably the random number generation
+used by Bun and WebKit (Safari, all iOS versions of browsers).
+
+## Usage
+
+(These are the intended usage patterns, to implement)
+
+### Recover seed
+
+```sh
+$ time cargo run --release 0.09206707202592623
+Seed: TODO
+TODO: include time
+```
+
+### Predict next output
+
+```sh
+$ time cargo run --release --next-pred 0.04654924635051105
+0.9982287547550598
+# TODO: Verify!
+```
+
+### As a library
+
+```rust
+// TODO: Add the library usage here, showing e.g. the look for patterns.
+```
+
+## Background
+
+I got nerd-sniped into investigating the `Math.random()` default seeding
+implementation of the [Bun](https://bun.com/) JS runtime (for
+*cough cough [reasons](https://github.com/JesseEmond/blitz-2024-registration/)*).
+
+### Where does the seed come from?
+My previous investigation like this was [in V8](https://github.com/JesseEmond/blitz-2024-registration/tree/main#mathrandom), where, depite `Math.random()` being a known
+weak random generator, the seed still comes from good entropy and is [64-bits](https://github.com/nodejs/node/blob/0a18e136b4a1e860bb2befcbd1f78661ed5fb5e7/deps/v8/src/base/utils/random-number-generator.h#L46).
+
+While looking at Bun, I chased down its initial random seed through this path:
+- [`jsc.getRandomSeed`](https://bun.com/reference/bun/jsc/getRandomSeed), called
+  when it starts;
+- Connected to its C++ implementation `functionGetRandomSeed` [here](https://github.com/oven-sh/bun/blob/abc26b727b3fe596e11d54113c94e5a1e839b51b/src/jsc/modules/BunJSCModule.h#L1020);
+- Implemented as a call to `globalObject->weakRandom().seed()` [here](https://github.com/oven-sh/bun/blob/abc26b727b3fe596e11d54113c94e5a1e839b51b/src/jsc/modules/BunJSCModule.h#L525) (note: appropriate name for `Math.random()`, I appreciate it!);
+- `globalObject` is a `JSGlobalObject`. Reading on Bun's architecture, we learn
+  that it leverages Apple's JavaScriptCore (JSC) for its core runtime engine.
+- Bun uses [its fork of webkit](https://github.com/oven-sh/WebKit) for the
+  runtime implementation (see [contributing instructions](https://bun.com/docs/project/contributing#building-webkit-locally-debug-mode-of-jsc));
+- `weakRandom` is a `WeakRandom` object (see [here](https://github.com/oven-sh/WebKit/blob/74650443cb1a41519624470b386c850c1927762b/Source/JavaScriptCore/runtime/JSGlobalObject.h#L1356));
+- [`WeakRandom`'s implementation](https://github.com/oven-sh/WebKit/blob/74650443cb1a41519624470b386c850c1927762b/Source/WTF/wtf/WeakRandom.h#L42) sits in `WTF/wtf/WeakRandom.h` (FYI: `WTF` here [stands for](https://stackoverflow.com/questions/834179/wtf-does-wtf-represent-in-the-webkit-code-base) `Web Template Framework`!);
+- Its seed by default comes from a cryptographically random number, but can be
+  passed as an argument -- let's chase down `m_weakRandom`'s initialization on the
+  global object...;
+- In the cpp implementation, the `m_weakRandom` [is initialized](https://github.com/oven-sh/WebKit/blob/74650443cb1a41519624470b386c850c1927762b/Source/JavaScriptCore/runtime/JSGlobalObject.cpp#L972)
+  either with a forced seed based on options (default false), or...
+- **The seed is set via a cryptographically-strong _32-bit_ number**!
+
+## Really, 32-bits...?
+Now, `Math.random()` is not meant to be secure in V8 either -- see
+[_Hacking the javascript lottery_](https://blog.securityevaluators.com/hacking-the-javascript-lottery-80cc437e3b7f), this is certainly not a _real_ issue.
+But, I'm still surprised that it wouldn't go to 64-bits to make bruteforceability
+less accessible.
+
+To convince myself that I didn't mess up in my chase, I ran the following test:
+```sh
+# Generate 1M seeds
+for i in {1..1000000}; do
+  bun -e 'import { getRandomSeed } from "bun:jsc"; console.log(getRandomSeed());' >> /tmp/seeds.txt
+done
+# (... be patient ...)
+
+# Check how many total seeds we have (`wc -l`), vs. how many unique ones (`sort -u | wc -l`).
+# Extract the duplicates (sort | uniq -cd).
+cat /tmp/seeds.txt | wc -l; sort -u /tmp/seeds.txt | wc -l; sort /tmp/seeds.txt | uniq -cd
+```
+
+And I got:
+```
+1000000
+999886
+      2 1018798769
+      2 1084645150
+[ ... snip ... ]
+```
+
+with **114 colliding seeds**.
+
+Now, with [birthday problem](https://en.wikipedia.org/wiki/Birthday_problem) maths,
+the expected number of collisions (`E[X]`) for 1M (`k`) samples of 32-bits
+(`n=2**32`) numbers would be `~= k(k-1) / 2n ~= 1M(1M-1)/(2**33) ~= 116.4`.
+
+**Looks like we have a 32-bit seed!**
+
+## Bruteforcing 32-bit seeds
+
+TODO: Implement & document here.
