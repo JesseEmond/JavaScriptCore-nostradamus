@@ -18,7 +18,7 @@ While looking at Bun, I chased down its initial random seed through this path:
 - [`jsc.getRandomSeed`](https://bun.com/reference/bun/jsc/getRandomSeed),
   mentions the seed being set when it starts;
 - Connected to its C++ implementation `functionGetRandomSeed` [here](https://github.com/oven-sh/bun/blob/abc26b727b3fe596e11d54113c94e5a1e839b51b/src/jsc/modules/BunJSCModule.h#L1020);
-- Implemented as a call to `globalObject->weakRandom().seed()` [here](https://github.com/oven-sh/bun/blob/abc26b727b3fe596e11d54113c94e5a1e839b51b/src/jsc/modules/BunJSCModule.h#L525) (note: appropriate name for `Math.random()`, I appreciate the explicit name to disencourage misuse!);
+- Implemented as a call to `globalObject->weakRandom().seed()` [here](https://github.com/oven-sh/bun/blob/abc26b727b3fe596e11d54113c94e5a1e839b51b/src/jsc/modules/BunJSCModule.h#L525) (note: appropriate name for `Math.random()`, I appreciate the explicit name to discourage misuse!);
 - `globalObject` is a `JSGlobalObject`. Reading on Bun's architecture, we learn
   that it leverages Apple's JavaScriptCore (JSC) for its core runtime engine.
 - Bun uses [its fork of webkit](https://github.com/oven-sh/WebKit) for the
