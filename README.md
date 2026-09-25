@@ -10,7 +10,7 @@ used by Bun and WebKit (Safari, all iOS versions of browsers).
 
 ```sh
 $ time cargo run --release 0.09206707202592623
-Seed: 2592623
+Seed: 1172590173
 cargo run --release 0.09206707202592623  1.55s user 0.01s system 110% cpu 1.407 total
 ```
 
